@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"./exporter"
+	"swarm_exporter/exporter"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"

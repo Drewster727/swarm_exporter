@@ -6,6 +6,6 @@
 *.dll
 *.so
 *.dylib
-swarm-exporter
+swarm_exporter
 pkg/
 src/
