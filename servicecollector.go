@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
@@ -17,6 +18,8 @@ type Service struct {
 	Mode     string
 	Replicas uint64
 	Name     string
+	Image    string
+	Tag      string
 	Tasks    []Task
 }
 
@@ -41,7 +44,7 @@ func newServicesCollector() *servicesCollector {
 	return &servicesCollector{
 		serviceReplicas: prometheus.NewDesc("docker_service_replicas",
 			"Current state of Docker service.",
-			[]string{"mode", "name"}, nil,
+			[]string{"mode", "name", "image_name", "image_tag"}, nil,
 		),
 		serviceTasksState: prometheus.NewDesc("docker_service_tasks_state",
 			"Current state of Docker service tasks.",
@@ -59,7 +62,7 @@ func (c *servicesCollector) Collect(ch chan<- prometheus.Metric) {
 	data := fetchServices()
 
 	for _, svc := range data {
-		ch <- prometheus.MustNewConstMetric(c.serviceReplicas, prometheus.CounterValue, float64(svc.Replicas), svc.Mode, svc.Name)
+		ch <- prometheus.MustNewConstMetric(c.serviceReplicas, prometheus.CounterValue, float64(svc.Replicas), svc.Mode, svc.Name, svc.Image, svc.Tag)
 		for _, task := range svc.Tasks {
 			ch <- prometheus.MustNewConstMetric(c.serviceTasksState, prometheus.CounterValue, float64(task.Count), svc.Mode, svc.Name, task.DesiredState, task.State)
 		}
@@ -124,9 +127,16 @@ func fetchServices() []Service {
 			tsks = append(tsks, value)
 		}
 
+		var image = strings.Split(string(service.Spec.TaskTemplate.ContainerSpec.Image), "@")[0]
+		var imageParts = strings.Split(image, ":")
+		var imageName = imageParts[0]
+		var imageTag = imageParts[1]
+
 		svc := Service{
 			Mode:     mode,
 			Name:     service.Spec.Annotations.Name,
+			Image:    imageName,
+			Tag:      imageTag,
 			Replicas: replicas,
 			Tasks:    tsks,
 		}
